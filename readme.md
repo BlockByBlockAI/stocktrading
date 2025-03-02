@@ -2,17 +2,93 @@
 
 An advanced algorithmic trading platform that combines technical analysis, options strategies, and automated paper trading.
 
+## Project Structure
+
+### Core Trading Engine
+- `auto_trade.py`: Automated trading engine that runs Mon-Fri during market hours
+- `modules/trading_strategy.py`: Core trading signal generation and strategy execution
+- `modules/portfolio_manager.py`: Portfolio and risk management for multiple positions
+- `modules/options_strategies.py`: Complex options strategy selection and execution
+
+### Analysis Components
+- `modules/stock_data.py`: Market data fetching and processing
+- `modules/technical_analysis.py`: Technical indicators and chart patterns
+- `modules/news_analysis.py`: News sentiment and analyst ratings analysis
+- `modules/options_analysis.py`: Options chain analysis and flow tracking
+
+### User Interface
+- `main.py`: Streamlit dashboard for monitoring and analysis
+- `modules/paper_trading.py`: Manual paper trading interface
+- `.streamlit/config.toml`: Streamlit configuration
+
+### Data Storage
+- `data/paper_trades.json`: Trade history and performance data
+- `logs/trading.log`: System logs and debugging information
+
 ## Features
 
-- Multi-signal trading strategy (RSI, options flow, analyst ratings)
-- Complex options strategies (spreads, iron condors, butterflies)
-- Automated paper trading for top 50 S&P stocks
-- Real-time market data and signal processing
-- Risk management with position sizing and stop-loss
-- Performance tracking and analytics dashboard
+1. Multi-Signal Trading Strategy
+   - RSI and trend-based indicators
+   - Options flow analysis
+   - Analyst ratings integration
+   - Support/resistance levels
+
+2. Portfolio Management
+   - Position sizing and risk control
+   - Multi-stock portfolio tracking
+   - Automated stop-loss and take-profit
+   - Performance analytics
+
+3. Options Trading
+   - Complex strategies (spreads, iron condors)
+   - Options flow analysis
+   - Greeks monitoring
+   - Premium decay tracking
+
+4. Real-Time Monitoring
+   - Live market data integration
+   - Portfolio performance dashboard
+   - Trade execution logging
+   - Risk metrics tracking
+
+## Running the Platform
+
+1. Start the Streamlit dashboard:
+```bash
+streamlit run main.py
+```
+
+2. Run automated trading:
+```bash
+python auto_trade.py
+```
+
+The system runs in simulation mode by default for testing and optimization.
+
+## Configuration
+
+- Initial capital: $100,000
+- Risk per trade: 2% of portfolio
+- Default stop-loss: 5%
+- Default take-profit: 15%
+- Trading universe: Top 50 S&P 500 stocks
+
+## Dependencies
+- streamlit: Web interface
+- pandas: Data analysis
+- yfinance: Market data
+- pandas-ta: Technical analysis
+- plotly: Interactive charts
+- twilio: Notifications (optional)
+
+## Project Status
+- ✅ Core trading engine operational
+- ✅ Portfolio management system active
+- ✅ Paper trading interface complete
+- ✅ Real-time monitoring dashboard
+- 🔄 Machine learning optimization (planned)
 
 ## Setup
-
 1. Install dependencies:
 ```bash
 pip install -r requirements.txt
@@ -27,23 +103,6 @@ streamlit run main.py
 ```bash
 python auto_trade.py
 ```
-
-## Components
-
-### Trading Engine
-- `auto_trade.py`: Automated trading engine running Mon-Fri during market hours
-- `modules/trading_strategy.py`: Signal generation and trade execution
-- `modules/options_strategies.py`: Options strategy selection and execution
-- `modules/portfolio_manager.py`: Portfolio and risk management
-
-### Analysis
-- `modules/stock_data.py`: Market data fetching and processing
-- `modules/news_analysis.py`: News and analyst ratings analysis
-- `modules/technical_analysis.py`: Technical indicators and chart patterns
-
-### Interface
-- `main.py`: Streamlit dashboard for monitoring and analysis
-- `modules/paper_trading.py`: Manual paper trading interface
 
 ## Usage
 
