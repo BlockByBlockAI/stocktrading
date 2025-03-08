@@ -50,29 +50,36 @@ class PortfolioManager:
         signals = []
         logging.info(f"Checking signals for {len(self.trading_strategies)} stocks")
 
+        # Recalculate max position size as 2% of current portfolio capital
+        stats = self.get_portfolio_stats()
+        self.max_position_size = stats['current_capital'] * 0.02
+
+        trades = load_trades()
         for symbol, strategy in self.trading_strategies.items():
             try:
-                # Skip if we don't have enough capital
-                if self.available_capital < self.max_position_size:
-                    logging.info(f"Skipping {symbol} - Insufficient capital")
+                # Diversification: skip if already holding this symbol
+                if any(t for t in trades if t['symbol'] == symbol and t['status'] == 'open'):
+                    logging.info(f"Skipping {symbol} - already an open position")
                     continue
 
-                logging.info(f"Analyzing {symbol} for trading opportunities...")
+                # Capital check: need at least max_position_size available to initiate a new trade
+                if self.available_capital < self.max_position_size:
+                    logging.info("Insufficient available capital for new positions, stopping signal check")
+                    break  # exit loop if we cannot fund further positions
+
+                logging.info(f"Analyzing {symbol} for trade opportunities...")
                 trade_type = strategy.should_enter_trade()
                 if trade_type:
                     trade = strategy.execute_trade(trade_type)
                     if trade:
-                        self.available_capital -= (
-                            trade['entry_price'] * trade['quantity'] 
-                            if trade['type'] == 'equity' 
-                            else trade['max_loss']
-                        )
+                        # Deduct used capital: for equity, entry cost; for options, margin equal to max_loss
+                        cost = trade['entry_price'] * trade.get('quantity', 1) if trade['type'] == 'equity' else trade['max_loss']
+                        self.available_capital -= cost
                         signals.append(trade)
-                        logging.info(f"New trade signal for {symbol}: {trade['type']} - {trade.get('strategy_type', 'equity')}")
+                        logging.info(f"Opened new {trade['type']} position for {symbol} (Strategy: {trade.get('strategy_type', 'N/A')})")
             except Exception as e:
-                logging.error(f"Error checking signals for {symbol}: {str(e)}")
+                logging.error(f"Error checking signals for {symbol}: {e}")
                 continue
-
         return signals
 
     def monitor_portfolio(self):
