@@ -16,6 +16,16 @@ class PortfolioManager:
 
     def initialize_portfolio(self):
         """Initialize trading strategies for top 50 S&P stocks"""
+
+        # modules/portfolio_manager.py (within PortfolioManager.initialize_portfolio)
+        try:
+            import pickle
+            model_path = "models/trade_model.pkl"
+            ml_model = pickle.load(open(model_path, "rb"))
+            logging.info("Machine learning model loaded for trade predictions")
+        except Exception as e:
+            ml_model = None
+            logging.warning("No ML model loaded (proceeding without ML predictions)")
         try:
             # Get top 50 S&P stocks by market cap
             sp500_stocks = get_sp500_stocks()
@@ -27,6 +37,7 @@ class PortfolioManager:
             # Initialize trading strategy for each stock
             for symbol in top_50_stocks['Symbol']:
                 self.trading_strategies[symbol] = TradingStrategy(symbol, self.max_position_size)
+                self.trading_strategies[symbol].ml_model = ml_model  # attach model to strategy
 
             logging.info(f"Successfully initialized trading strategies for {len(self.trading_strategies)} stocks")
             return True
