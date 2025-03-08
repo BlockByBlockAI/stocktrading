@@ -167,6 +167,25 @@ Technical Analysis for {self.symbol}:
             options_signals = self.get_options_signals()
             analyst_signals = self.get_analyst_signals()
 
+            # If an ML model is available, use it to evaluate the trade
+            if hasattr(self, 'ml_model') and self.ml_model:
+                # Prepare feature vector for prediction (example features)
+                features = [
+                    tech_signals['rsi'],
+                    tech_signals['sma_20'] - tech_signals['sma_50'],   # trend strength
+                    tech_signals['macd'] - tech_signals['macd_signal_line'],  # MACD histogram
+                    options_signals['put_call_ratio'],
+                    1 if options_signals['bullish_flow'] else 0,
+                    analyst_signals['mean_rating']
+                ]
+            prob = self.ml_model.predict_proba([features])[0][1]  # probability of positive outcome
+            logging.info(f"ML model confidence for {self.symbol}: {prob:.2f}")
+
+            if prob < 0.5:
+                # If predicted success probability is below 50%, skip this trade signal
+                logging.info(f"ML model suggests low success probability for {self.symbol}, skipping trade")
+                return None
+
             current_price = tech_signals['price']
 
             # Log analysis for debugging
@@ -212,8 +231,15 @@ Technical Analysis for {self.symbol}:
 
         # Calculate position size (risk 2% of capital per trade)
         risk_amount = self.current_capital * 0.02
-        stop_loss = current_price * 0.95  # 5% stop loss
-        take_profit = current_price * 1.15  # 15% take profit
+        # Dynamic stop-loss and take-profit using ATR (if available)
+        if tech_signals['atr'] and tech_signals['atr'] > 0:
+            # For volatile stocks, use ATR-based bands (1.5 ATR stop, 3 ATR profit target)
+            stop_loss_price = current_price - 1.5 * tech_signals['atr']
+            take_profit_price = current_price + 3.0 * tech_signals['atr']
+        else:
+            # Fallback to fixed 5%/15% if ATR not available
+            stop_loss_price = current_price * 0.95
+            take_profit_price = current_price * 1.15
 
         # Record signals for ML training
         signal_data = {
@@ -264,6 +290,23 @@ Technical Analysis for {self.symbol}:
 
             # Execute the selected strategy
             trade = options_strategy.execute_strategy(strategy_details)
+            if trade:
+                # Attach signals record
+                trade['signals'] = signal_data  # (we will flatten this later)
+                # Dynamic stop-loss and take-profit based on conditions
+                if tech_signals['uptrend'] and options_signals['bullish_flow']:
+                    # Bullish scenario: allow more risk, aim for higher profit
+                    trade['stop_loss'] = trade['max_loss'] * 1.0   # risk full max loss if confident
+                    trade['take_profit'] = trade['max_profit'] * 0.7  # aim for 70% of max profit
+                elif tech_signals['bollinger_width'] and tech_signals['bollinger_width'] > 0.10:
+                    # Volatile market: tighten risk, take profits earlier
+                    trade['stop_loss'] = trade['max_loss'] * 0.7
+                    trade['take_profit'] = trade['max_profit'] * 0.4
+                else:
+                    # Normal conditions
+                    trade['stop_loss'] = trade['max_loss'] * 0.8
+                    trade['take_profit'] = trade['max_profit'] * 0.5
+                
             if not trade:
                 return None
 
@@ -297,18 +340,23 @@ Technical Analysis for {self.symbol}:
             if trade['status'] == 'open':
                 current_price = self.get_technical_signals()['price']
 
-                if trade['type'] == 'equity':
-                    pnl = (current_price - trade['entry_price']) / trade['entry_price']
+               if trade['status'] == 'open' and trade['type'] == 'equity':
+                    current_price = self.get_technical_signals()['price']
+                    entry = trade['entry_price']
+                    pnl_percent = (current_price - entry) / entry * 100
 
-                    # Check exit conditions
-                    if (current_price <= trade['stop_loss'] or  # Stop loss hit
-                        current_price >= trade['take_profit'] or  # Take profit hit
-                        pnl <= -self.max_loss_pct):  # Max loss hit
+                    # Update trailing stop-loss if profit exceeds 10%
+                    if pnl_percent > 10:
+                        new_stop = current_price * 0.95  # trail stop to 5% below current price
+                        if new_stop > trade['stop_loss']:
+                            trade['stop_loss'] = new_stop  # move stop-loss up to protect profit
 
+                    # Exit conditions: hit stop-loss or take-profit or max loss threshold
+                    if current_price <= trade['stop_loss'] or current_price >= trade['take_profit'] or pnl_percent <= - (self.max_loss_pct * 100):
                         trade['status'] = 'closed'
                         trade['exit_date'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
                         trade['exit_price'] = current_price
-                        trade['profit'] = pnl * trade['quantity'] * trade['entry_price']
+                        trade['profit'] = (current_price - entry) * trade['quantity']
 
                 elif trade['type'] == 'options':
                     # Get current options chain
