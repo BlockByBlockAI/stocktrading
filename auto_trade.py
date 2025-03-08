@@ -94,6 +94,28 @@ def run_automated_trading(simulation_mode=True):
 
                 # Print portfolio status
                 stats = portfolio.get_portfolio_stats()
+                
+                # Prepare CSV entry for performance tracking
+                perf_entry = (
+                    f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')},"
+                    f"{stats['current_capital']:.2f},"
+                    f"{stats['available_capital']:.2f},"
+                    f"{stats['total_trades']},"
+                    f"{stats['win_rate']:.2f},"
+                    f"{stats['total_profit']:.2f}\n"
+                )
+                
+                # Append to performance log CSV
+                os.makedirs('logs', exist_ok=True)
+
+                perf_file = open('logs/performance.csv', 'a')
+                if perf_file.tell() == 0:
+                    # write header if file is new
+                    perf_file.write("timestamp,current_capital,available_capital,total_trades,win_rate,total_profit\n")
+                
+                perf_file.write(perf_entry)
+                perf_file.close()
+
                 logging.info("\nPortfolio Status:")
                 logging.info(f"Total Capital: ${stats['current_capital']:,.2f}")
                 logging.info(f"Available Capital: ${stats['available_capital']:,.2f}")
