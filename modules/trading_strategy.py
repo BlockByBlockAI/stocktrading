@@ -249,6 +249,18 @@ Technical Analysis for {self.symbol}:
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         }
 
+        # Flatten the signal data for logging
+        flat_signals = {}
+        for category, sig_dict in signal_data.items():
+            if isinstance(sig_dict, dict):
+                for key, value in sig_dict.items():
+                    flat_signals[f"{category}_{key}"] = value
+            else:
+                # timestamp or any non-dict entry
+                flat_signals[category] = sig_dict
+
+        trade['signals'] = flat_signals
+
         if trade_type == 'equity':
             quantity = int(risk_amount / current_price)
             if quantity < 1:
