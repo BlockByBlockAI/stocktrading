@@ -63,6 +63,11 @@ class TradingStrategy:
             current_rsi = df['RSI'].iloc[-1] if not df['RSI'].empty else None
             sma_20 = df['SMA_20'].iloc[-1] if not df['SMA_20'].empty else None
             sma_50 = df['SMA_50'].iloc[-1] if not df['SMA_50'].empty else None
+            current_macd = df['MACD'].iloc[-1]
+            current_signal = df['MACD_signal'].iloc[-1]
+            current_upper = df['Bollinger_Upper'].iloc[-1]
+            current_lower = df['Bollinger_Lower'].iloc[-1]
+            current_atr = df['ATR'].iloc[-1]
 
             if any(x is None for x in [current_price, current_rsi, sma_20, sma_50]):
                 raise ValueError("Failed to get current indicator values")
@@ -78,7 +83,18 @@ class TradingStrategy:
                 'near_support': current_price <= support.iloc[-1] * 1.02 if not support.empty else False,
                 'near_resistance': current_price >= resistance.iloc[-1] * 0.98 if not resistance.empty else False,
                 'sma_20': sma_20,
-                'sma_50': sma_50
+                'sma_50': sma_50,
+                # New indicators:
+                'macd': current_macd,
+                'macd_signal_line': current_signal,
+                'macd_bullish': current_macd > current_signal,         # True if MACD above signal (bullish momentum)
+                'bollinger_upper': current_upper,
+                'bollinger_lower': current_lower,
+                'bollinger_width': ((current_upper - current_lower) / rolling_mean.iloc[-1]) if rolling_mean.iloc[-1] != 0 else 0,
+                'below_bollinger': current_price < current_lower,
+                'above_bollinger': current_price > current_upper,
+                'atr': current_atr,
+                'atr_percent': (current_atr / current_price * 100) if current_price != 0 else 0
             }
 
             # Log successful signal calculation and status
