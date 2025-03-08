@@ -248,54 +248,47 @@ class OptionsStrategy:
         }
 
     def select_best_strategy(self, current_price, technicals, options_flow):
-        """Select the best options strategy based on market conditions"""
+        # modules/options_strategies.py (within OptionsStrategy.select_best_strategy)
         expiry_dates = self.get_expiry_dates()
         if not expiry_dates:
             return None
-            
         expiry_date = expiry_dates[0]
-        strategies = []
-        
-        # Market conditions analysis
+
+        # Analyze market conditions from provided signals
         is_trending = technicals['uptrend'] or technicals['near_support'] or technicals['near_resistance']
-        is_volatile = technicals['rsi'] > 70 or technicals['rsi'] < 30
-        is_bullish = (technicals['uptrend'] and technicals['near_support'] and 
-                     options_flow['bullish_flow'])
-        is_bearish = (not technicals['uptrend'] and technicals['near_resistance'] and 
-                     not options_flow['bullish_flow'])
-        
-        # Strategy selection based on market conditions
+        # Consider volatility: use Bollinger band width or RSI extremes as indicator
+        is_volatile = False
+        if 'bollinger_width' in technicals and technicals['bollinger_width'] > 0.10:
+            is_volatile = True
+        elif technicals['rsi'] > 70 or technicals['rsi'] < 30:
+            is_volatile = True
+
+        # Sentiment-based bias
+        is_bullish = (technicals['uptrend'] and technicals['near_support'] and options_flow['bullish_flow'])
+        is_bearish = (not technicals['uptrend'] and technicals['near_resistance'] and not options_flow['bullish_flow'])
+
+        strategies = []
         if is_bullish and not is_volatile:
-            # Bullish trend - Use bull call spread
-            strategy = self.create_vertical_spread("bull_call", expiry_date, current_price)
-            if strategy:
-                strategies.append(strategy)
-                
+            # Bullish trend in a steady market – prefer Bull Call Spread
+            strat = self.create_vertical_spread("bull_call", expiry_date, current_price)
+            if strat: strategies.append(strat)
         elif is_bearish and not is_volatile:
-            # Bearish trend - Use bear put spread
-            strategy = self.create_vertical_spread("bear_put", expiry_date, current_price)
-            if strategy:
-                strategies.append(strategy)
-                
+            # Bearish trend in steady market – prefer Bear Put Spread
+            strat = self.create_vertical_spread("bear_put", expiry_date, current_price)
+            if strat: strategies.append(strat)
         elif is_volatile:
-            # High volatility - Use butterfly spread
-            strategy = self.create_butterfly(expiry_date, current_price)
-            if strategy:
-                strategies.append(strategy)
-                
+            # High volatility – prefer limited-risk strategy like Butterfly
+            strat = self.create_butterfly(expiry_date, current_price)
+            if strat: strategies.append(strat)
         elif not is_trending:
-            # Range-bound - Use iron condor
-            strategy = self.create_iron_condor(expiry_date, current_price)
-            if strategy:
-                strategies.append(strategy)
-        
-        # Select the strategy with the best risk/reward ratio
+            # Sideways market – use neutral strategy like Iron Condor
+            strat = self.create_iron_condor(expiry_date, current_price)
+            if strat: strategies.append(strat)
+
+        # Select the strategy with the best risk/reward (highest |max_profit/max_loss| ratio)
         if strategies:
-            best_strategy = max(strategies, 
-                              key=lambda x: abs(x['max_profit']/x['max_loss']) 
-                              if x['max_loss'] != 0 else 0)
+            best_strategy = max(strategies, key=lambda x: abs(x['max_profit']/x['max_loss']) if x['max_loss'] != 0 else float('inf'))
             return best_strategy
-            
         return None
 
     def execute_strategy(self, strategy_details):
