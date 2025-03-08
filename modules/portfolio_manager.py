@@ -124,44 +124,32 @@ class PortfolioManager:
         return portfolio_summary
 
     def get_portfolio_stats(self):
-        """Get portfolio performance statistics"""
         trades = load_trades()
-
-        if not trades:
-            return {
-                'total_trades': 0,
-                'win_rate': 0,
-                'total_profit': 0,
-                'max_drawdown': 0,
-                'current_capital': self.initial_capital,
-                'available_capital': self.available_capital
-            }
-
         closed_trades = [t for t in trades if t['status'] == 'closed']
         open_trades = [t for t in trades if t['status'] == 'open']
 
         total_profit = sum(t['profit'] for t in closed_trades if t['profit'] is not None)
         winning_trades = len([t for t in closed_trades if t.get('profit', 0) > 0])
-
+    
         # Calculate unrealized P&L for open positions
         unrealized_pnl = 0
         for trade in open_trades:
             strategy = self.trading_strategies.get(trade['symbol'])
             if strategy:
+                current_price = strategy.get_technical_signals()['price']
                 if trade['type'] == 'equity':
-                    current_price = strategy.get_technical_signals()['price']
                     unrealized_pnl += (current_price - trade['entry_price']) * trade['quantity']
-                else:  # options strategy
+                else:
+                    # For options, use a method in TradingStrategy to calculate current P&L
                     unrealized_pnl += strategy.calculate_options_pnl(trade)
-
-        stats = {
+    
+        current_capital = self.initial_capital + total_profit + unrealized_pnl
+        return {
             'total_trades': len(trades),
             'open_positions': len(open_trades),
             'win_rate': (winning_trades / len(closed_trades) * 100) if closed_trades else 0,
             'total_profit': total_profit,
             'unrealized_pnl': unrealized_pnl,
-            'current_capital': self.initial_capital + total_profit + unrealized_pnl,
+            'current_capital': current_capital,
             'available_capital': self.available_capital
         }
-
-        return stats
