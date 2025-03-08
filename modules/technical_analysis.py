@@ -3,6 +3,32 @@ import plotly.graph_objects as go
 import pandas as pd
 from modules.stock_data import get_historical_data
 
+def calculate_macd(data, fast=12, slow=26, signal=9):
+    """Calculate MACD (Moving Average Convergence/Divergence) and its signal line."""
+    fast_ema = data.ewm(span=fast, adjust=False).mean()
+    slow_ema = data.ewm(span=slow, adjust=False).mean()
+    macd_line = fast_ema - slow_ema
+    signal_line = macd_line.ewm(span=signal, adjust=False).mean()
+    macd_hist = macd_line - signal_line
+    return macd_line, signal_line, macd_hist
+
+def calculate_bollinger_bands(data, window=20, num_std=2):
+    """Calculate Bollinger Bands (upper and lower bands) for the given window."""
+    rolling_mean = data.rolling(window).mean()
+    rolling_std = data.rolling(window).std()
+    upper_band = rolling_mean + num_std * rolling_std
+    lower_band = rolling_mean - num_std * rolling_std
+    return rolling_mean, upper_band, lower_band
+
+def calculate_atr(df, period=14):
+    """Calculate Average True Range for volatility measurement."""
+    high_low = df['High'] - df['Low']
+    high_close = (df['High'] - df['Close'].shift(1)).abs()
+    low_close = (df['Low'] - df['Close'].shift(1)).abs()
+    true_range = pd.concat([high_low, high_close, low_close], axis=1).max(axis=1)
+    atr = true_range.rolling(window=period).mean()
+    return atr
+
 def calculate_sma(data, window):
     """Calculate Simple Moving Average"""
     return data.rolling(window=window).mean()
