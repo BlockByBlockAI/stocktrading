@@ -48,13 +48,26 @@ def calculate_support_resistance(df, window=20):
     return lows, highs
 
 def display_technical_analysis(symbol):
-    # Get historical data
-    df = get_historical_data(symbol)
-
-    # Calculate technical indicators
+    # modules/trading_strategy.py (within TradingStrategy.get_technical_signals)
+    df = get_historical_data(self.symbol)
+    # ... existing RSI, SMA calculations ...
+    df['RSI'] = calculate_rsi(df['Close'])
     df['SMA_20'] = calculate_sma(df['Close'], 20)
     df['SMA_50'] = calculate_sma(df['Close'], 50)
-    df['RSI'] = calculate_rsi(df['Close'])
+
+    # Calculate MACD and Bollinger Bands for additional insight
+    macd_line, signal_line, macd_hist = calculate_macd(df['Close'])
+    df['MACD'] = macd_line
+    df['MACD_signal'] = signal_line
+    df['MACD_hist'] = macd_hist
+
+    rolling_mean, upper_band, lower_band = calculate_bollinger_bands(df['Close'])
+    df['Bollinger_Mid'] = rolling_mean
+    df['Bollinger_Upper'] = upper_band
+    df['Bollinger_Lower'] = lower_band
+
+    # Calculate ATR for volatility-based stop-loss/take-profit
+    df['ATR'] = calculate_atr(df)
 
     # Support and resistance
     support, resistance = calculate_support_resistance(df)
